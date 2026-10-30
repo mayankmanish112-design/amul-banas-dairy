@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Amul Banas Dairy Mamna</title>
+
+  <!-- Firebase Compatibility SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+  <style>
+    body { font-family: sans-serif; margin: 15px; background: #f4f6f9; color: #333; }
+    h2, h3 { color: #004085; }
+    .card { background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    input, select, button { width: 100%; padding: 10px; margin: 6px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    button { background: #0056b3; color: white; border: none; font-weight: bold; cursor: pointer; }
+    button:hover { background: #004085; }
+    .status-badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+    .online { background: #d4edda; color: #155724; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background: #e9ecef; }
+
+    /* ========================================================
+       SPLASH SCREEN & ANIMATION STYLES
+       ======================================================== */
+    #splash-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #1e3c72, #2a5298);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 99999;
+      transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .splash-logo {
+      width: 160px;
+      height: 160px;
+      border-radius: 24px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+      animation: zoomInBounce 1.5s ease-out forwards;
+      background-color: #fff;
+      padding: 5px;
+    }
+
+    .creator-text {
+      color: #fff;
+      font-size: 18px;
+      margin-top: 30px;
+      font-weight: 600;
+      text-align: center;
+      letter-spacing: 0.5px;
+      animation: fadeInUp 1.2s ease-out 0.5s both;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    }
+
+    .creator-name {
+      color: #ffeb3b;
+      font-weight: bold;
+      font-size: 20px;
+      display: block;
+      margin-top: 5px;
+      animation: pulseText 2s infinite;
+    }
+
+    @keyframes zoomInBounce {
+      0% {
+        transform: scale(0.3) rotate(-15deg);
+        opacity: 0;
+      }
+      70% {
+        transform: scale(1.1) rotate(5deg);
+      }
+      100% {
+        transform: scale(1) rotate(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes pulseText {
+      0%, 100% {
+        transform: scale(1);
+        text-shadow: 0 0 5px rgba(255,235,59,0.5);
+      }
+      50% {
+        transform: scale(1.05);
+        text-shadow: 0 0 15px rgba(255,235,59,0.9);
+      }
+    }
+
+    .hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ========================================================
+     ANIMATED SPLASH SCREEN
+     ======================================================== -->
+  <div id="splash-screen">
+    <img src="https://i.ibb.co/6yPrW9P/image-0.png" class="splash-logo" alt="Dairy Logo">
+    <div class="creator-text">
+      This app created by
+      <span class="creator-name">Mayank yaduvanshi Mamna</span>
+    </div>
+  </div>
+
+  <!-- MAIN APP INTERFACE -->
+  <h2>अमुल बनास ममना दूध डेयरी</h2>
+  <div id="status" class="status-badge online">Cloud Online: Connecting...</div>
+
+  <!-- Naya Person Jodne Ka Form -->
+  <div class="card">
+    <h3>नया व्यक्ति (Customer/Supplier) जोड़ें</h3>
+    <input type="text" id="p_name" placeholder="नाम (जैसे: रामशरण सिंह यादव)">
+    <input type="tel" id="p_phone" placeholder="मोबाइल नंबर">
+    <input type="text" id="p_address" value="ममना" placeholder="पता">
+    <select id="p_type">
+      <option value="customer">Customer (ग्राहक)</option>
+      <option value="supplier">Supplier (दूध देने वाला)</option>
+    </select>
+    <button onclick="savePerson()">Firebase me Save Karein</button>
+  </div>
+
+  <!-- Doodh Entry Ka Form -->
+  <div class="card">
+    <h3>दूध का हिसाब / Entry दर्ज करें</h3>
+    <select id="e_personId"><option value="">व्यक्ति चुनें</option></select>
+    <select id="e_shift">
+      <option value="सुबह">सुबह</option>
+      <option value="शाम">शाम</option>
+    </select>
+    <input type="date" id="e_date">
+    <input type="number" id="e_qty" step="0.01" placeholder="मात्रा (लीटर)">
+    <input type="number" id="e_rate" step="0.01" placeholder="रेट (प्रति लीटर)">
+    <button onclick="saveEntry()">Entry Save Karein</button>
+  </div>
+
+  <!-- Entries List -->
+  <div class="card">
+    <h3>हाल की एंट्रियां (Live Data)</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>तारीख</th>
+          <th>शिफ्ट</th>
+          <th>मात्रा</th>
+          <th>रेट</th>
+          <th>कुल रुपए</th>
+        </tr>
+      </thead>
+      <tbody id="entries_table"></tbody>
+    </table>
+  </div>
+
+  <script>
+    // Splash screen timer
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        const splash = document.getElementById('splash-screen');
+        splash.classList.add('hidden');
+        setTimeout(() => splash.style.display = 'none', 600);
+      }, 3200);
+    });
+
+    // -------------------------------------------------------------
+    // AAPKI ASLI FIREBASE CONFIGURATION (Linked Directly)
+    // -------------------------------------------------------------
+    const firebaseConfig = {
+      apiKey: "AIzaSyDzMKVH_SiJbcVeEDKknYXFj-7p8SGFNh8",
+      authDomain: "amul-banas-deyri-mamna.firebaseapp.com",
+      databaseURL: "https://amul-banas-deyri-mamna-default-rtdb.firebaseio.com",
+      projectId: "amul-banas-deyri-mamna",
+      storageBucket: "amul-banas-deyri-mamna.firebasestorage.app",
+      messagingSenderId: "434421191491",
+      appId: "1:434421191491:web:e4ce8d2af9c7940497d376",
+      measurementId: "G-ES3LJQ0483"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // -------------------------------------------------------------
+    // PURANA BACKUP DATA (Auto-Sync to Cloud)
+    // -------------------------------------------------------------
+    const initialBackup = {
+      "people": [
+        { "id": "mvsqw1adfpz6h", "name": "रामशरण सिंह यादव", "phone": "9968504472", "address": "ममना", "type": "customer", "createdAt": "2026-10-28" },
+        { "id": "mvsqwfk1iq6tc", "name": "रामदर्शन सेन", "phone": "", "address": "ममना", "type": "customer", "createdAt": "2026-10-28" },
+        { "id": "mvsqx4fcaz2iw", "name": "दयाराम भारती", "phone": "", "address": "ममना", "type": "customer", "createdAt": "2026-10-28" },
+        { "id": "mvsqxing3nw9x", "name": "उदयराज यादव", "phone": "", "address": "ममना", "type": "customer", "createdAt": "2026-10-28" },
+        { "id": "mvsqy6h2undhk", "name": "इंद्रपाल की अम्मा", "phone": "", "address": "ममना", "type": "customer", "createdAt": "2026-10-28" },
+        { "id": "mvsqz3qu487da", "name": "बब्बू यादव", "phone": "", "address": "ममना", "type": "supplier", "createdAt": "2026-10-28" },
+        { "id": "mvsqzkfn2buj2", "name": "आयुष यादव", "phone": "", "address": "ममना", "type": "supplier", "createdAt": "2026-10-28" },
+        { "id": "mvtk3fhs35vfl", "name": "महेन्द्र यादव", "phone": "", "address": "Mamna", "type": "supplier", "createdAt": "2026-10-29" }
+      ],
+      "entries": [
+        { "id": "mvsvmxsid8tgb", "kind": "sale", "personId": "mvsqwfk1iq6tc", "date": "2026-09-18", "shift": "सुबह", "qty": 0.5, "rate": 70, "amount": 35 },
+        { "id": "mvsvnzzt6x0gr", "kind": "sale", "personId": "mvsqwfk1iq6tc", "date": "2026-10-02", "shift": "सुबह", "qty": 0.5, "rate": 70, "amount": 35 },
+        { "id": "mvsvoaec93avu", "kind": "sale", "personId": "mvsqwfk1iq6tc", "date": "2026-10-29", "shift": "सुबह", "qty": 0.5, "rate": 70, "amount": 35 },
+        { "id": "mvsvovrjpjqur", "kind": "sale", "personId": "mvsqwfk1iq6tc", "date": "2026-10-03", "shift": "सुबह", "qty": 0.5, "rate": 70, "amount": 35 },
+        { "id": "mvsvztwdkvl7k", "kind": "sale", "personId": "mvsqx4fcaz2iw", "date": "2026-10-29", "shift": "सुबह", "qty": 0.5, "rate": 70, "amount": 35 },
+        { "id": "mvtk4jv5zslzw", "kind": "milk", "personId": "mvtk3fhs35vfl", "date": "2026-10-29", "shift": "शाम", "qty": 2.56, "rate": 42.52, "amount": 108.85 }
+      ]
+    };
+
+    async function syncBackupToFirebase() {
+      const synced = localStorage.getItem("mamna_firebase_synced");
+      if (!synced) {
+        document.getElementById("status").innerText = "Cloud Sync: Migrating backup data...";
+        
+        const updates = {};
+        initialBackup.people.forEach(p => { updates['people/' + p.id] = p; });
+        initialBackup.entries.forEach(e => { updates['entries/' + e.id] = e; });
+
+        await db.ref().update(updates);
+        localStorage.setItem("mamna_firebase_synced", "true");
+        document.getElementById("status").innerText = "Cloud Live: Synced!";
+      } else {
+        document.getElementById("status").innerText = "Cloud Live: Connected";
+      }
+    }
+
+    // -------------------------------------------------------------
+    // DATA SAVE FUNCTIONS
+    // -------------------------------------------------------------
+    function savePerson() {
+      const name = document.getElementById("p_name").value.trim();
+      const phone = document.getElementById("p_phone").value.trim();
+      const address = document.getElementById("p_address").value.trim();
+      const type = document.getElementById("p_type").value;
+
+      if (!name) { alert("कृपया नाम दर्ज करें!"); return; }
+
+      const id = "p_" + Date.now();
+      const today = new Date().toISOString().split("T")[0];
+
+      db.ref("people/" + id).set({
+        id, name, phone, address, type, createdAt: today
+      }).then(() => {
+        alert("व्यक्ति का रिकॉर्ड सुरक्षित रूप से सेव हो गया!");
+        document.getElementById("p_name").value = "";
+        document.getElementById("p_phone").value = "";
+      }).catch(err => alert("Error: " + err.message));
+    }
+
+    function saveEntry() {
+      const personId = document.getElementById("e_personId").value;
+      const shift = document.getElementById("e_shift").value;
+      const date = document.getElementById("e_date").value;
+      const qty = parseFloat(document.getElementById("e_qty").value) || 0;
+      const rate = parseFloat(document.getElementById("e_rate").value) || 0;
+
+      if (!personId || qty <= 0 || rate <= 0) {
+        alert("कृपया सही विवरण भरें!");
+        return;
+      }
+
+      const id = "e_" + Date.now();
+      const amount = Number((qty * rate).toFixed(2));
+
+      db.ref("entries/" + id).set({
+        id, personId, shift, date, qty, rate, amount, kind: "milk"
+      }).then(() => {
+        alert("दूध का हिसाब सुरक्षित रूप से सेव हो गया!");
+        document.getElementById("e_qty").value = "";
+        document.getElementById("e_rate").value = "";
+      }).catch(err => alert("Error: " + err.message));
+    }
+
+    // -------------------------------------------------------------
+    // REAL-TIME DATA LISTENER
+    // -------------------------------------------------------------
+    function listenData() {
+      // People load karein
+      db.ref("people").on("value", snapshot => {
+        const select = document.getElementById("e_personId");
+        select.innerHTML = '<option value="">व्यक्ति चुनें</option>';
+        const data = snapshot.val();
+        if (data) {
+          Object.values(data).forEach(p => {
+            const opt = document.createElement("option");
+            opt.value = p.id;
+            opt.innerText = `${p.name} (${p.type})`;
+            select.appendChild(opt);
+          });
+        }
+      });
+
+      // Entries load karein
+      db.ref("entries").on("value", snapshot => {
+        const tbody = document.getElementById("entries_table");
+        tbody.innerHTML = "";
+        const data = snapshot.val();
+        if (data) {
+          const list = Object.values(data).sort((a,b) => b.date.localeCompare(a.date));
+          list.slice(0, 25).forEach(e => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+              <td>${e.date}</td>
+              <td>${e.shift}</td>
+              <td>${e.qty} L</td>
+              <td>₹${e.rate}</td>
+              <td>₹${e.amount}</td>
+            `;
+            tbody.appendChild(tr);
+          });
+        }
+      });
+    }
+
+    document.getElementById("e_date").value = new Date().toISOString().split("T")[0];
+    syncBackupToFirebase().then(() => {
+      listenData();
+    });
+  </script>
+</body>
+</html>
